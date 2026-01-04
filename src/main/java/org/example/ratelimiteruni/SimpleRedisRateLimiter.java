@@ -1,5 +1,7 @@
 package org.example.ratelimiteruni;
 
+import com.jetbrains.exported.JBRApi;
+import org.springframework.stereotype.Service;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
@@ -8,16 +10,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Service
 public class SimpleRedisRateLimiter implements RateLimit {
 
     private final JedisPool jedisPool;
-    private final long capacity;
-    private final double tokensPerSecond;
+    private final long capacity=5;
+    private final double tokensPerSecond=1.0;
 
-    public SimpleRedisRateLimiter(JedisPool jedisPool, long capacity, double tokensPerSecond) {
+    public SimpleRedisRateLimiter(JedisPool jedisPool) {
         this.jedisPool = jedisPool;
-        this.capacity = capacity;
-        this.tokensPerSecond = tokensPerSecond;
     }
 
     @Override

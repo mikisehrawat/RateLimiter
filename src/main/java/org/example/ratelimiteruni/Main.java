@@ -5,7 +5,7 @@ import redis.clients.jedis.JedisPool;
 public class Main {
     public static void main(String[] args) {
         JedisPool pool = new JedisPool("localhost", 6379);
-        RateLimit limiter = new SimpleRedisRateLimiter(pool, 5, 1.0);
+        RateLimit limiter = new SimpleRedisRateLimiter(pool);
 
         String ipAddress = "192.168.0.1";
 
