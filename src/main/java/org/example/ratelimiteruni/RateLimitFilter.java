@@ -23,27 +23,52 @@ public class RateLimitFilter implements Filter {
         HttpServletRequest req = (HttpServletRequest) request;
         HttpServletResponse res = (HttpServletResponse) response;
 
-        String finalKey = determineRateLimitKey(req);
+        RateLimitConfig config = determineRules(req);
 
-        if (rateLimiter.isAllowed(finalKey)) {
+        if (rateLimiter.isAllowed(config.key, config.capacity, config.refillRate)) {
             chain.doFilter(request, response);
         } else {
             res.setStatus(429);
-            res.getWriter().write("Too many requests! (Key: " + finalKey + ")");
+            res.getWriter().write("Too many requests! You are limited to " + config.capacity + " requests.");
         }
     }
-
-    private String determineRateLimitKey(HttpServletRequest req) {
+    private RateLimitConfig determineRules(HttpServletRequest req) {
         String authHeader = req.getHeader("Authorization");
+
+        String key = "ip:" + req.getRemoteAddr();
+        long capacity = 10;
+        double refillRate = 1.0;
+
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
             String userId = getUserIdFromToken(token);
 
             if (userId != null) {
-                return "user:" + userId;
+                key = "user:" + userId;
+
+                // CHECK: Is it a Premium User?
+                if (userId.toLowerCase().contains("premium")) {
+                    capacity = 100;
+                    refillRate = 10.0;
+                } else {
+                    capacity = 30;
+                    refillRate = 3.0;
+                }
             }
         }
-        return "ip:" + req.getRemoteAddr();
+        return new RateLimitConfig(key, capacity, refillRate);
+    }
+
+    private static class RateLimitConfig {
+        String key;
+        long capacity;
+        double refillRate;
+
+        public RateLimitConfig(String key, long capacity, double refillRate) {
+            this.key = key;
+            this.capacity = capacity;
+            this.refillRate = refillRate;
+        }
     }
 
     private String getUserIdFromToken(String token) {

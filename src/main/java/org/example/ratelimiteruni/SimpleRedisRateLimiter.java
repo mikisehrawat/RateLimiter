@@ -14,15 +14,13 @@ import java.util.Map;
 public class SimpleRedisRateLimiter implements RateLimit {
 
     private final JedisPool jedisPool;
-    private final long capacity=5;
-    private final double tokensPerSecond=1.0;
 
     public SimpleRedisRateLimiter(JedisPool jedisPool) {
         this.jedisPool = jedisPool;
     }
 
     @Override
-    public boolean isAllowed(String key) {
+    public boolean isAllowed(String key, long capacity, double tokensPerSecond) {
         try (Jedis jedis = jedisPool.getResource()) {
             String redisKey = "rate_limit:" + key;
             long now = Instant.now().toEpochMilli();
