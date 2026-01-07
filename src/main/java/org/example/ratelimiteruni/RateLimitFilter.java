@@ -22,8 +22,8 @@ public class RateLimitFilter implements Filter {
 
         HttpServletRequest req = (HttpServletRequest) request;
         HttpServletResponse res = (HttpServletResponse) response;
-
-        RateLimitConfig config = determineRules(req);
+        RateLimitConfig configApi = accApi(req);
+        RateLimitConfig config = determineRules(req,configApi.capacity, configApi.refillRate,configApi.key);
 
         if (rateLimiter.isAllowed(config.key, config.capacity, config.refillRate)) {
             chain.doFilter(request, response);
@@ -32,12 +32,37 @@ public class RateLimitFilter implements Filter {
             res.getWriter().write("Too many requests! You are limited to " + config.capacity + " requests.");
         }
     }
-    private RateLimitConfig determineRules(HttpServletRequest req) {
+    private RateLimitConfig accApi(HttpServletRequest req){
+        String uri = req.getRequestURI(); // e.g., "/login", "/data", "/home"
+
+        long capacity;
+        double refillRate;
+        String finalKey;
+        if (uri.equals("/login") || uri.equals("/signup")) {
+            capacity = 5;
+            refillRate = 1.0;
+            finalKey = "/login";
+        }
+        else if (uri.equals("/data")) {
+            capacity = 1;
+            refillRate = 1.0;
+            finalKey = "/data";
+        }
+        else {
+            capacity = 20;
+            refillRate = 2.0;
+            finalKey = "/general";
+        }
+
+        return new RateLimitConfig(finalKey, capacity, refillRate);
+    }
+
+    private RateLimitConfig determineRules(HttpServletRequest req,long c, double r,String ApiType) {
         String authHeader = req.getHeader("Authorization");
 
         String key = "ip:" + req.getRemoteAddr();
-        long capacity = 10;
-        double refillRate = 1.0;
+        long capacity = c;
+        double refillRate = r;
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
@@ -45,18 +70,16 @@ public class RateLimitFilter implements Filter {
 
             if (userId != null) {
                 key = "user:" + userId;
-
-                // CHECK: Is it a Premium User?
                 if (userId.toLowerCase().contains("premium")) {
-                    capacity = 100;
-                    refillRate = 10.0;
+                    capacity = c*10;
+                    refillRate = r*10;
                 } else {
-                    capacity = 30;
-                    refillRate = 3.0;
+                    capacity = c*5;
+                    refillRate = r*5;
                 }
             }
         }
-        return new RateLimitConfig(key, capacity, refillRate);
+        return new RateLimitConfig(key+ApiType, capacity, refillRate);
     }
 
     private static class RateLimitConfig {
