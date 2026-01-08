@@ -3,6 +3,7 @@ package org.example.ratelimiteruni;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.util.Base64;
@@ -11,6 +12,23 @@ import java.util.Base64;
 public class RateLimitFilter implements Filter {
 
     private final RateLimit rateLimiter;
+
+    @Value("${ratelimit.login.capacity:1}")
+    long logincapacity;
+    @Value("${ratelimit.login.refillRate:1.0}")
+    double loginrefillRate;
+    @Value("${ratelimit.general.capacity:1}")
+    long generalcapacity;
+    @Value("${ratelimit.general.refillRate:1.0}")
+    double generalrefillRate;
+    @Value("${ratelimit.data.capacity:1}")
+    long datacapacity;
+    @Value("${ratelimit.data.refillRate:1.0}")
+    double datarefillRate;
+    @Value("${ratelimit.premium.multiplier:1}")
+    long premiumMultiplier;
+    @Value("${ratelimit.user.multiplier:1}")
+    long userMultiplier;
 
     public RateLimitFilter(RateLimit rateLimiter) {
         this.rateLimiter = rateLimiter;
@@ -34,23 +52,22 @@ public class RateLimitFilter implements Filter {
     }
     private RateLimitConfig accApi(HttpServletRequest req){
         String uri = req.getRequestURI(); // e.g., "/login", "/data", "/home"
-
+        String finalKey;
         long capacity;
         double refillRate;
-        String finalKey;
         if (uri.equals("/login") || uri.equals("/signup")) {
-            capacity = 5;
-            refillRate = 1.0;
+            capacity = logincapacity;
+            refillRate = loginrefillRate;
             finalKey = "/login";
         }
         else if (uri.equals("/data")) {
-            capacity = 1;
-            refillRate = 1.0;
+            capacity = datacapacity;
+            refillRate = datarefillRate;
             finalKey = "/data";
         }
         else {
-            capacity = 20;
-            refillRate = 2.0;
+            capacity = generalcapacity;
+            refillRate = generalrefillRate;
             finalKey = "/general";
         }
 
@@ -71,11 +88,11 @@ public class RateLimitFilter implements Filter {
             if (userId != null) {
                 key = "user:" + userId;
                 if (userId.toLowerCase().contains("premium")) {
-                    capacity = c*10;
-                    refillRate = r*10;
+                    capacity = c*premiumMultiplier;
+                    refillRate = r*premiumMultiplier;
                 } else {
-                    capacity = c*5;
-                    refillRate = r*5;
+                    capacity = c*userMultiplier;
+                    refillRate = r*userMultiplier;
                 }
             }
         }

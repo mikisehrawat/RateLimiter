@@ -54,5 +54,9 @@ public class SimpleRedisRateLimiter implements RateLimit {
 
             return allowed;
         }
+        catch (Exception e) {
+            System.err.println("Redis is down! Allowing request for key: " + key + " Error: " + e.getMessage());
+            return true;
+        }
     }
 }
