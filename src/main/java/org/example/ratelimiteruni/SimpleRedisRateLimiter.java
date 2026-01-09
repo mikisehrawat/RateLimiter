@@ -59,4 +59,29 @@ public class SimpleRedisRateLimiter implements RateLimit {
             return true;
         }
     }
+    @Override
+    public void reportViolation(String key , long banThreshold) {
+        try (Jedis jedis = jedisPool.getResource()) {
+            String violationKey = "violation:" + key;
+            long count = jedis.incr(violationKey);
+            if (count == 1) {
+                jedis.expire(violationKey, 60);
+            }
+            if (count >= banThreshold) {
+                jedis.setex("blacklist:" + key, 3600, "banned");
+                jedis.del(violationKey);
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to report violation: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public boolean isBlacklisted(String key) {
+        try (Jedis jedis = jedisPool.getResource()) {
+            return jedis.exists("blacklist:" + key);
+        } catch (Exception e) {
+            return false;
+        }
+    }
 }

@@ -43,9 +43,16 @@ public class RateLimitFilter implements Filter {
         RateLimitConfig configApi = accApi(req);
         RateLimitConfig config = determineRules(req,configApi.capacity, configApi.refillRate,configApi.key);
 
+        if (rateLimiter.isBlacklisted(config.key)) {
+            res.setStatus(403); // 403 = Forbidden (Stricter than 429)
+            res.getWriter().write("You are temporarily banned for spamming. Try again in 1 hour.");
+            return;
+        }
+
         if (rateLimiter.isAllowed(config.key, config.capacity, config.refillRate)) {
             chain.doFilter(request, response);
         } else {
+            rateLimiter.reportViolation(config.key, config.capacity);
             res.setStatus(429);
             res.getWriter().write("Too many requests! You are limited to " + config.capacity + " requests.");
         }
