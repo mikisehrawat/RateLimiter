@@ -84,7 +84,7 @@ public class RateLimitFilter implements Filter {
     private RateLimitConfig determineRules(HttpServletRequest req,long c, double r,String ApiType) {
         String authHeader = req.getHeader("Authorization");
 
-        String key = "ip:" + req.getRemoteAddr();
+        String key = "ip:" + getClientIp(req);
         long capacity = c;
         double refillRate = r;
 
@@ -142,5 +142,15 @@ public class RateLimitFilter implements Filter {
         if (end == -1) return null;
 
         return json.substring(start, end);
+    }
+    private String getClientIp(HttpServletRequest req) {
+        String ipAddress = req.getHeader("X-Forwarded-For");
+        if (ipAddress == null || ipAddress.isEmpty() || "unknown".equalsIgnoreCase(ipAddress)) {
+            return req.getRemoteAddr();
+        }
+        if (ipAddress.contains(",")) {
+            return ipAddress.split(",")[0].trim();
+        }
+        return ipAddress;
     }
 }
